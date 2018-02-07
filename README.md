@@ -10,6 +10,22 @@ Once you have generated your TArray of UPathingPoint, you can pass this to the S
 
 The Solve_AStar() function also asks for which UPathingPoint is the target and which is the start. 
 
+Example:
+```
+TArray<UPathingPoint*> CachedPathingPoints;
+//Generate your pathing points
+
+UPathingPoint * StartPathingPoint = .....
+UPathingPoint * EndPathingPoint = ....
+
+TArray<UPathingPoint*> OutPathingPoints;
+
+if (APathFinder::Solve_AStar(CachedPathingPoints, StartPathingPoint, EndPathingPoint, OutPathingPoints))
+{
+  TArray<FVector> RoutePathingVectors = APathFinder::PathingPointsToVector(OutPathingPoints);
+  
+}
+```
 It gives you back a filled TArray of pathing points of the found path. 
 
 You can use the static function PathingPointsToVector() to easily convert those pathing points to a TArray of FVector. Make it even easier to implement in to an existing project.

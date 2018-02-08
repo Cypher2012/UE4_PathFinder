@@ -12,6 +12,41 @@ void UPathingPoint::ResetPathing()
 	SetParentPathingPoint(nullptr);
 }
 
+void UPathingPoint::SetVisited(const bool bInVisited)
+{
+	bVisited = bInVisited;
+}
+
+void UPathingPoint::SetLocalCost(const float inLocalCost)
+{
+	LocalCost = inLocalCost;
+}
+
+void UPathingPoint::SetGlobalCost(const float inGlobalCost)
+{
+	GlobalCost = inGlobalCost;
+}
+
+void UPathingPoint::SetParentPathingPoint(UPathingPoint * inParent)
+{
+	ParentPathingPoint = inParent;
+}
+
+bool UPathingPoint::GetVisited() const
+{
+	return bVisited;
+}
+
+float UPathingPoint::GetLocalCost() const
+{
+	return LocalCost;
+}
+
+float UPathingPoint::GetGlobalCost() const
+{
+	return GlobalCost;
+}
+
 void UPathingPoint::SetLocation(const FVector inLocation)
 {
 	Location = inLocation;
@@ -20,41 +55,6 @@ void UPathingPoint::SetLocation(const FVector inLocation)
 FVector UPathingPoint::GetLocation() const
 {
 	return Location;
-}
-
-void UPathingPoint::SetVisited(const bool bInVisited)
-{
-	bVisited = bInVisited;
-}
-
-bool UPathingPoint::GetVisited() const
-{
-	return bVisited;
-}
-
-void UPathingPoint::SetLocalCost(const float inLocalCost)
-{
-	LocalCost = inLocalCost;
-}
-
-float UPathingPoint::GetLocalCost() const
-{
-	return LocalCost;
-}
-
-void UPathingPoint::SetGlobalCost(const float inGlobalCost)
-{
-	GlobalCost = inGlobalCost;
-}
-
-float UPathingPoint::GetGlobalCost() const
-{
-	return GlobalCost;
-}
-
-void UPathingPoint::SetParentPathingPoint(UPathingPoint * inParent)
-{
-	ParentPathingPoint = inParent;
 }
 
 UPathingPoint * UPathingPoint::GetParentPathingPoint() const
@@ -93,16 +93,13 @@ void APathFinder::SortByGlobalCost(TArray<UPathingPoint*>& PathingPoints)
 	}
 }
 
-bool APathFinder::Solve_AStar(TArray<UPathingPoint*> PathingPoints, UPathingPoint * StartPoint, UPathingPoint * TargetPoint, TArray<UPathingPoint*>& OutPathingPoints)
+bool APathFinder::Solve_AStar(TArray<UPathingPoint*> const PathingPoints, UPathingPoint * const StartPoint,  UPathingPoint * const TargetPoint, TArray<UPathingPoint*>& OutPathingPoints, const bool bStopIfPathFound)
 {
 	//We must remember to reset the pathing values if we are running the path finding multiple times
 	for (UPathingPoint * tmpPathingPoint : PathingPoints)
 	{
 		tmpPathingPoint->ResetPathing();
-	}
-
-
-	bool bPathFound = false;
+	}	
 
 	//Set up the starting pathing point
 	UPathingPoint * CurrentPathingPoint = StartPoint;
@@ -112,6 +109,8 @@ bool APathFinder::Solve_AStar(TArray<UPathingPoint*> PathingPoints, UPathingPoin
 	//Create points to test array and add starting point to it
 	TArray<UPathingPoint*> PointsToTest;
 	PointsToTest.Push(CurrentPathingPoint);
+
+	bool bPathFound = false;
 
 	while (PointsToTest.Num() > 0)
 	{
@@ -124,14 +123,22 @@ bool APathFinder::Solve_AStar(TArray<UPathingPoint*> PathingPoints, UPathingPoin
 			PointsToTest.RemoveAt(0);
 		}
 
-		//If no more points to test, the algorythm has finished!
+		//If no more points to test, the algorithm has finished!
 		if (PointsToTest.Num() <= 0)
+		{
 			break;
+		}
 
-		//If we have found the target, set bPathFound flag to true. This will be returned once the algorythm has finished
+		//If we have found the target, set bPathFound flag to true. This will be returned once the algorithm has finished
 		if (CurrentPathingPoint == TargetPoint)
 		{
 			bPathFound = true;
+
+			//Break from the loop if the path is found and bStopIfPathFound flag is set to true
+			if (bStopIfPathFound)
+			{
+				break;
+			}
 		}
 
 		//Onces the prior checks of PointsToTest have completed, we can set the current pathing point
@@ -156,7 +163,6 @@ bool APathFinder::Solve_AStar(TArray<UPathingPoint*> PathingPoints, UPathingPoin
 				ConnectedPoint->SetLocalCost(PossiblyLowestGoal);
 				ConnectedPoint->SetGlobalCost(ConnectedPoint->GetLocalCost() + Heuristic(ConnectedPoint, TargetPoint));
 			}
-
 		}
 
 	}
@@ -192,6 +198,41 @@ TArray<FVector> APathFinder::PathingPointsToVector(const TArray<UPathingPoint*> 
 	}
 
 	return ReturnVectors;
+}
+
+TArray<UPathingPoint*> APathFinder::VectorToPathingPoint(const TArray<FVector> PathingVectors)
+{
+	TArray<UPathingPoint*> ReturnPathingPoints;
+
+	for (FVector PathingVector : PathingVectors)
+	{
+		UPathingPoint* tmpPathingPoint = NewObject<UPathingPoint>();
+		tmpPathingPoint->SetLocation(PathingVector);
+
+		ReturnPathingPoints.Add(tmpPathingPoint);
+	}
+
+	return ReturnPathingPoints;
+}
+
+void APathFinder::JoinPathingPoints(UPathingPoint * a, UPathingPoint * b)
+{
+	a->AddConnectedPathingPoint(b);
+	b->AddConnectedPathingPoint(a);
+}
+
+void APathFinder::JoinPathingPointArray(TArray<UPathingPoint*> PathingPoints)
+{
+	for (int i = 0; i < PathingPoints.Num(); i++)
+	{
+		for (int j = 0; j < PathingPoints.Num(); j++)
+		{
+			if (i != j)
+			{
+				PathingPoints[i]->AddConnectedPathingPoint(PathingPoints[j]);
+			}
+		}
+	}
 }
 
 

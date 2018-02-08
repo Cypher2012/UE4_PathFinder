@@ -26,17 +26,17 @@ class UPathingPoint : public UObject
 	void SetVisited(const bool bInVisited);	
 	void SetLocalCost(const float inLocalCost);	
 	void SetGlobalCost(const float inGlobalCost);	
-
-public:		
-
 	void SetParentPathingPoint(UPathingPoint * inParent);
-	void SetLocation(const FVector inLocation);
 
-	FVector GetLocation() const;
 	bool GetVisited() const;
 	float GetLocalCost() const;
 	float GetGlobalCost() const;
 
+public:		
+
+	void SetLocation(const FVector inLocation);
+
+	FVector GetLocation() const;	
 	UPathingPoint * GetParentPathingPoint() const;
 
 	void AddConnectedPathingPoint(UPathingPoint * inPathingConnectedPathingPoint);
@@ -44,7 +44,7 @@ public:
 };
 
 UCLASS()
-class AIRPORTSIM_API APathFinder : public AActor
+class AIRPORTSIM_API APathFinder : public AInfo
 {
 	GENERATED_BODY()
 
@@ -58,7 +58,7 @@ class AIRPORTSIM_API APathFinder : public AActor
 
 
 	/**
-	* Sorts the passed PathingPoints by their GlobalCost. Implements a bubble sort algorythm
+	* Sorts the passed PathingPoints by their GlobalCost. Implements a bubble sort algorithm
 	* @param PathingPoints Array of UPathingPoint to be re-ordered
 	*/
 	static void SortByGlobalCost(TArray<UPathingPoint*>& PathingPoints);
@@ -71,14 +71,37 @@ public:
 	* @param StartPoint The starting point of the path
 	* @param TargetPoint The target point for the end of the path
 	* @param OutPathingPoints The resulting path returned as an array of pathing points
+	* @param bStopIfPathFound Decides if the algorithm should stop as soon as it has found a path, or continue to completely finish and find the shortest path
 	* @return Returns true if a path was found
 	*/
-	static bool Solve_AStar(TArray<UPathingPoint*> PathingPoints, UPathingPoint * StartPoint, UPathingPoint * TargetPoint, TArray<UPathingPoint*>& OutPathingPoints);
+	static bool Solve_AStar(TArray<UPathingPoint*> const PathingPoints,  UPathingPoint * const StartPoint, UPathingPoint * const TargetPoint, TArray<UPathingPoint*>& OutPathingPoints, const bool bStopIfPathFound = false);
 
 	/**
-	* Converts an array of UPathingPoint to an array of FVector
+	* Converts an array of UPathingPoint pointers to an array of FVector's
 	* @param PathingPoints Array of UPathingPoint to be converted
 	* @return An array of FVector converted from the pathing points
 	*/
 	static TArray<FVector> PathingPointsToVector(const TArray<UPathingPoint*> PathingPoints);
+
+	/**
+	* Coverts TArray of FVector's to a TArray of UPathingPoint pointers, with the locations set to the incoming FVectors.
+	* You will still need to set connected UPathingPoints manually.
+	* @param PathingVectors TArray of FVector to be converted
+	* @return an array of UPathingPoint pointers
+	*/
+	static TArray<UPathingPoint *> VectorToPathingPoint(const TArray<FVector> PathingVectors);
+
+	/**
+	* Will add the passed UPathingPoint's to each others connected pathing points.
+	* This will create a connection in both directions.
+	* @param a The first UPathingPoint
+	* @param b The second UPathingPoint
+	*/
+	static void JoinPathingPoints(UPathingPoint * a, UPathingPoint * b);
+
+	/**
+	* Creates two way connections between all of the UPathingPoint's in the TArray
+	* @param PathingPoints TArray of pathing points to join
+	*/
+	static void JoinPathingPointArray(TArray<UPathingPoint*> PathingPoints);
 };

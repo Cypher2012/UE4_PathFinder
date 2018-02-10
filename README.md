@@ -28,4 +28,14 @@ if (APathFinder::Solve_AStar(CachedPathingPoints, StartPathingPoint, EndPathingP
 ```
 It gives you back a filled TArray of pathing points of the found path. 
 
-You can use the static function PathingPointsToVector() to easily convert those pathing points to a TArray of FVector. Make it even easier to implement in to an existing project.
+## Help Functions
+
+There are now a few help functions that you can use! 
+
+* PathingPointsToVector() - Use this  to easily convert TArray of UPathingPoint to a TArray of FVector, with matching location.
+
+* VectorToPathingPoint() - This will take a TArray of FVector and create a TArray of UPathingPoint with matching locations. It must be noted though, that this will not CONNECT the UPathingPoints.You will still need to do this.
+
+* JoinPathingPoints() - This will take two UPathingPoints, and create a two way connection between them.
+
+* JoinPathingPointArray() - This will take TArray of UPathingPoint, and make two way connections between ALL of them.

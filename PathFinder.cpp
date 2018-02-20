@@ -4,47 +4,17 @@
 
 #include "Engine.h"
 
+void FPathingData::Reset()
+{
+	bVisited = false;
+	LocalCost = INFINITY;
+	GlobalCost = INFINITY;
+}
+
 void UPathingPoint::ResetPathing()
 {
-	SetVisited(false);
-	SetLocalCost(INFINITY);
-	SetGlobalCost(INFINITY);
-	SetParentPathingPoint(nullptr);
-}
-
-void UPathingPoint::SetVisited(const bool bInVisited)
-{
-	bVisited = bInVisited;
-}
-
-void UPathingPoint::SetLocalCost(const float inLocalCost)
-{
-	LocalCost = inLocalCost;
-}
-
-void UPathingPoint::SetGlobalCost(const float inGlobalCost)
-{
-	GlobalCost = inGlobalCost;
-}
-
-void UPathingPoint::SetParentPathingPoint(UPathingPoint * inParent)
-{
-	ParentPathingPoint = inParent;
-}
-
-bool UPathingPoint::GetVisited() const
-{
-	return bVisited;
-}
-
-float UPathingPoint::GetLocalCost() const
-{
-	return LocalCost;
-}
-
-float UPathingPoint::GetGlobalCost() const
-{
-	return GlobalCost;
+	PathData.Reset();
+	ParentPathingPoint = nullptr;
 }
 
 void UPathingPoint::SetLocation(const FVector inLocation)
@@ -74,7 +44,7 @@ TArray<UPathingPoint*> UPathingPoint::GetConnectedPathingPoints() const
 
 float APathFinder::Heuristic(UPathingPoint * a, UPathingPoint * b)
 {
-	return FVector::Dist(a->GetLocation(), b->GetLocation());
+	return FVector::Dist(a->Location, b->Location);
 }
 
 void APathFinder::SortByGlobalCost(TArray<UPathingPoint*>& PathingPoints)
@@ -83,7 +53,7 @@ void APathFinder::SortByGlobalCost(TArray<UPathingPoint*>& PathingPoints)
 	{
 		for (int j = 0; j < PathingPoints.Num() - i - 1; j++)
 		{
-			if (PathingPoints[i]->GetGlobalCost() < PathingPoints[j]->GetGlobalCost())
+			if (PathingPoints[i]->PathData.GlobalCost < PathingPoints[j]->PathData.GlobalCost)
 			{
 				UPathingPoint* pTmp = PathingPoints[i];
 				PathingPoints[i] = PathingPoints[j];
@@ -103,8 +73,8 @@ bool APathFinder::Solve_AStar(TArray<UPathingPoint*> const PathingPoints, UPathi
 
 	//Set up the starting pathing point
 	UPathingPoint * CurrentPathingPoint = StartPoint;
-	StartPoint->SetLocalCost(0);
-	StartPoint->SetGlobalCost(Heuristic(StartPoint, TargetPoint));
+	StartPoint->PathData.LocalCost = 0;
+	StartPoint->PathData.GlobalCost = Heuristic(StartPoint, TargetPoint);
 
 	//Create points to test array and add starting point to it
 	TArray<UPathingPoint*> PointsToTest;
@@ -118,7 +88,7 @@ bool APathFinder::Solve_AStar(TArray<UPathingPoint*> const PathingPoints, UPathi
 		SortByGlobalCost(PointsToTest);
 
 		//If first point to test has already been visited, remove it and go to next
-		while (PointsToTest.Num() > 0 && PointsToTest[0]->GetVisited())
+		while (PointsToTest.Num() > 0 && PointsToTest[0]->PathData.bVisited)
 		{
 			PointsToTest.RemoveAt(0);
 		}
@@ -143,25 +113,25 @@ bool APathFinder::Solve_AStar(TArray<UPathingPoint*> const PathingPoints, UPathi
 
 		//Onces the prior checks of PointsToTest have completed, we can set the current pathing point
 		CurrentPathingPoint = PointsToTest[0];
-		CurrentPathingPoint->SetVisited(true);
+		CurrentPathingPoint->PathData.bVisited = true;
 
 		//Loop through all pathing points that are connected to the current point
-		for (UPathingPoint * ConnectedPoint : CurrentPathingPoint->GetConnectedPathingPoints())
+		for (UPathingPoint * ConnectedPoint : CurrentPathingPoint->ConnectedPathingPoints)
 		{
 			//Only add to PointsToTest if it hasn't already been visited
-			if (!ConnectedPoint->GetVisited())
+			if (!ConnectedPoint->PathData.bVisited)
 			{
 				PointsToTest.Add(ConnectedPoint);
 			}
 
 			//Find the best next point
-			float PossiblyLowestGoal = CurrentPathingPoint->GetLocalCost() + FVector::Dist(CurrentPathingPoint->GetLocation(), ConnectedPoint->GetLocation());
+			float PossiblyLowestGoal = CurrentPathingPoint->PathData.LocalCost + FVector::Dist(CurrentPathingPoint->Location, ConnectedPoint->Location);
 
-			if (PossiblyLowestGoal < ConnectedPoint->GetLocalCost())
+			if (PossiblyLowestGoal < ConnectedPoint->PathData.LocalCost)
 			{
-				ConnectedPoint->SetParentPathingPoint(CurrentPathingPoint);
-				ConnectedPoint->SetLocalCost(PossiblyLowestGoal);
-				ConnectedPoint->SetGlobalCost(ConnectedPoint->GetLocalCost() + Heuristic(ConnectedPoint, TargetPoint));
+				ConnectedPoint->ParentPathingPoint = CurrentPathingPoint;
+				ConnectedPoint->PathData.LocalCost = PossiblyLowestGoal;
+				ConnectedPoint->PathData.GlobalCost = ConnectedPoint->PathData.LocalCost + Heuristic(ConnectedPoint, TargetPoint);
 			}
 		}
 
@@ -174,11 +144,11 @@ bool APathFinder::Solve_AStar(TArray<UPathingPoint*> const PathingPoints, UPathi
 	{
 		UPathingPoint *p = TargetPoint;
 
-		while (p->GetParentPathingPoint() != nullptr)
+		while (p->ParentPathingPoint != nullptr)
 		{
 			OutPathingPoints.Add(p);
 
-			p = p->GetParentPathingPoint();
+			p = p->ParentPathingPoint;
 		}
 	}
 
@@ -194,7 +164,7 @@ TArray<FVector> APathFinder::PathingPointsToVector(const TArray<UPathingPoint*> 
 
 	for (UPathingPoint * PathingPoint : PathingPoints)
 	{
-		ReturnVectors.Add(PathingPoint->GetLocation());
+		ReturnVectors.Add(PathingPoint->Location);
 	}
 
 	return ReturnVectors;
@@ -207,7 +177,7 @@ TArray<UPathingPoint*> APathFinder::VectorToPathingPoint(const TArray<FVector> P
 	for (FVector PathingVector : PathingVectors)
 	{
 		UPathingPoint* tmpPathingPoint = NewObject<UPathingPoint>();
-		tmpPathingPoint->SetLocation(PathingVector);
+		tmpPathingPoint->Location = PathingVector;
 
 		ReturnPathingPoints.Add(tmpPathingPoint);
 	}

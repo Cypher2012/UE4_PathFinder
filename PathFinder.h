@@ -5,6 +5,18 @@
 
 #include "PathFinder.generated.h"
 
+USTRUCT()
+struct FPathingData
+{
+	GENERATED_BODY()
+
+	bool bVisited;
+	float LocalCost;
+	float GlobalCost;
+
+	void Reset();
+};
+
 UCLASS()
 class UPathingPoint : public UObject
 {
@@ -12,39 +24,24 @@ class UPathingPoint : public UObject
 
 	friend class APathFinder;
 
-	FVector Location;
-
-	bool bVisited;
-	float LocalCost;
-	float GlobalCost;
-
+	FVector Location;	
 	UPathingPoint * ParentPathingPoint;
 	TArray<UPathingPoint*> ConnectedPathingPoints;
+	FPathingData PathData;
 
-	void ResetPathing();	
-
-	void SetVisited(const bool bInVisited);	
-	void SetLocalCost(const float inLocalCost);	
-	void SetGlobalCost(const float inGlobalCost);	
-	void SetParentPathingPoint(UPathingPoint * inParent);
-
-	bool GetVisited() const;
-	float GetLocalCost() const;
-	float GetGlobalCost() const;
-
+	void ResetPathing();
+	
 public:		
 
 	void SetLocation(const FVector inLocation);
-
 	FVector GetLocation() const;	
 	UPathingPoint * GetParentPathingPoint() const;
-
 	void AddConnectedPathingPoint(UPathingPoint * inPathingConnectedPathingPoint);
 	TArray<UPathingPoint*> GetConnectedPathingPoints() const;
 };
 
 UCLASS()
-class AIRPORTSIM_API APathFinder : public AInfo
+class APathFinder : public AInfo
 {
 	GENERATED_BODY()
 
@@ -55,7 +52,6 @@ class AIRPORTSIM_API APathFinder : public AInfo
 	* @return Returns a new heuristic value
 	*/
 	static float Heuristic(UPathingPoint * a, UPathingPoint * b);
-
 
 	/**
 	* Sorts the passed PathingPoints by their GlobalCost. Implements a bubble sort algorithm
